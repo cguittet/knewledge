@@ -1,0 +1,14 @@
+node_modules
+.DS_Store
+.pnpm-store
+.next
+.turbo
+.trigger
+dist
+coverage
+.expo
+.env
+.env.local
+*.tsbuildinfo
+apps/extension/build
+supabase/.temp

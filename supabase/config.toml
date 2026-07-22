@@ -1,0 +1,24 @@
+project_id = "knewledge"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["knewledge://auth/callback", "http://localhost:3000/auth/callback"]
+
+[storage]
+enabled = true
+file_size_limit = "15MiB"
+
