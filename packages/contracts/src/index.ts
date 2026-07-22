@@ -53,7 +53,7 @@ export const CreateUploadRequest = z.object({
     fileName: z.string().min(1).max(255),
     mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]),
     sizeBytes: z.number().int().positive().max(15 * 1024 * 1024),
-  })).min(1).max(10),
+  })).min(1).max(20),
 });
 
 export const CreateImageCaptureRequest = z.object({
@@ -61,7 +61,7 @@ export const CreateImageCaptureRequest = z.object({
     objectKey: z.string().min(1).max(1024),
     mimeType: z.string().min(1).max(100),
     sizeBytes: z.number().int().positive().max(15 * 1024 * 1024),
-  })).min(1).max(10),
+  })).min(1).max(20),
   note: z.string().trim().max(2000).nullable().optional(),
   capturedAt: z.string().datetime().optional(),
 });

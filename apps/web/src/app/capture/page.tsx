@@ -8,6 +8,7 @@ import { Shell } from "@/components/shell";
 
 type UploadSlot = { objectKey: string; token: string; mimeType: string; sizeBytes: number };
 const supportedTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const maxImagesPerCapture = 20;
 
 export default function CapturePage() {
   const router = useRouter();
@@ -22,7 +23,12 @@ export default function CapturePage() {
 
   function chooseFiles(selected: FileList | null) {
     if (!selected) return;
-    const next = Array.from(selected).slice(0, 10);
+    const selectedFiles = Array.from(selected);
+    if (selectedFiles.length > maxImagesPerCapture) {
+      setError(`Choose no more than ${maxImagesPerCapture} images at once.`);
+      return;
+    }
+    const next = selectedFiles;
     const invalid = next.find((file) => !supportedTypes.has(file.type) || file.size > 15 * 1024 * 1024);
     if (invalid) { setError(`${invalid.name} is not a supported image or is larger than 15 MB.`); return; }
     setFiles(next); setError("");
@@ -60,7 +66,7 @@ export default function CapturePage() {
 
   return <Shell eyebrow="Works in every mobile browser" title="Add something worth keeping">
     <div className="capture-workspace"><div className="capture-tabs"><button className={mode === "images" ? "active" : ""} onClick={() => setMode("images")}><Camera size={17} /> Screenshots & book photos</button><button className={mode === "link" ? "active" : ""} onClick={() => setMode("link")}><Link2 size={17} /> Web or YouTube link</button></div>
-      {mode === "images" ? <section className="capture-panel"><label className="drop-zone"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" multiple onChange={(event) => chooseFiles(event.target.files)} /><span><UploadCloud size={28} /></span><h2>{files.length ? `${files.length} image${files.length === 1 ? "" : "s"} selected` : "Choose images or use your camera"}</h2><p>Select up to 10 pages. They’ll be read in this order as one capture.</p></label>{previews.length ? <div className="preview-grid">{previews.map((preview, index) => <div key={`${preview.file.name}-${index}`}><img src={preview.url} alt={`Selected page ${index + 1}`} /><span>{index + 1}</span><button onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remove ${preview.file.name}`}><X size={13} /></button></div>)}</div> : <div className="capture-tip"><FileImage size={18} /><span>On iPhone or Android, this opens the photo library and can offer the camera—there is no app to install.</span></div>}</section> : <section className="capture-panel"><div className="link-visual"><span><Play size={23} /></span><span><Link2 size={23} /></span></div><label className="capture-label">Paste a web page or YouTube video URL<input type="url" inputMode="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></label><div className="capture-tip"><Play size={18} /><span>YouTube videos are summarized from public captions. Videos without accessible captions remain saved and are marked for attention.</span></div></section>}
+      {mode === "images" ? <section className="capture-panel"><label className="drop-zone"><input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple onChange={(event) => chooseFiles(event.target.files)} /><span><UploadCloud size={28} /></span><h2>{files.length ? `${files.length} image${files.length === 1 ? "" : "s"} selected` : "Choose screenshots or photos"}</h2><p>Select up to {maxImagesPerCapture} images. They’ll be read in this order as one capture.</p></label>{previews.length ? <div className="preview-grid">{previews.map((preview, index) => <div key={`${preview.file.name}-${index}`}><img src={preview.url} alt={`Selected page ${index + 1}`} /><span>{index + 1}</span><button onClick={() => setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} aria-label={`Remove ${preview.file.name}`}><X size={13} /></button></div>)}</div> : <div className="capture-tip"><FileImage size={18} /><span>On iPhone or Android, this opens your photo library so you can select one or several screenshots or photos.</span></div>}</section> : <section className="capture-panel"><div className="link-visual"><span><Play size={23} /></span><span><Link2 size={23} /></span></div><label className="capture-label">Paste a web page or YouTube video URL<input type="url" inputMode="url" value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtube.com/watch?v=…" /></label><div className="capture-tip"><Play size={18} /><span>YouTube videos are summarized from public captions. Videos without accessible captions remain saved and are marked for attention.</span></div></section>}
       <section className="capture-note"><label className="capture-label">Why does this matter? <small>Optional</small><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={2000} placeholder="A quick thought helps the weekly synthesis understand why you saved it." /></label></section>
       {error && <div className="capture-error">{error}</div>}<button className="save-capture" disabled={status !== "idle" || (mode === "images" ? !files.length : !url.trim())} onClick={mode === "images" ? saveImages : saveLink}>{status === "saving" ? <><LoaderCircle className="spin" size={18} /> Saving…</> : status === "saved" ? <><Check size={18} /> Saved</> : mode === "images" ? "Upload capture" : "Save link"}</button>
     </div>
