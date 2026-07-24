@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, Camera, CircleAlert, Clock3, FileText, Link2, Play, Plus, Search, Sparkles } from "lucide-react";
+import { AlignLeft, ArrowUpRight, BookOpen, Camera, CircleAlert, Clock3, FileText, Link2, Play, Plus, Search, Sparkles } from "lucide-react";
 import { firstRelation } from "@knewledge/core";
 import Link from "next/link";
 import { createUserClient } from "@/lib/supabase/server";
@@ -6,7 +6,7 @@ import { createUserClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 
 type CaptureRow = {
-  id: string; kind: "image" | "pdf" | "link" | "youtube"; status: string; note: string | null;
+  id: string; kind: "image" | "pdf" | "link" | "youtube" | "text"; status: string; note: string | null;
   original_url: string | null; captured_at: string;
   content_revisions?: Array<{ item_analyses?: { title: string; summary: string } | Array<{ title: string; summary: string }> }>;
 };
@@ -64,7 +64,7 @@ export default async function Dashboard() {
       </section>
 
       <section className="stats-grid">
-        <div className="stat"><span>Recent captures</span><strong>{captures.length}</strong><small>Across links, images, and PDFs</small></div>
+        <div className="stat"><span>Recent captures</span><strong>{captures.length}</strong><small>Across links, images, PDFs, and text</small></div>
         <div className="stat"><span>Topics emerging</span><strong>{topicCount}</strong><small>Organized automatically</small></div>
         <div className="stat"><span>Needs attention</span><strong>{attention}</strong><small>{attention ? "Add a screenshot to help" : "Everything looks good"}</small></div>
       </section>
@@ -74,11 +74,11 @@ export default async function Dashboard() {
         {captures.length ? captures.map((capture) => {
           const analysis = firstRelation(capture.content_revisions?.[0]?.item_analyses);
           return <Link className="capture-card" href={`/captures/${capture.id}`} key={capture.id}>
-            <span className={`source-icon ${capture.kind}`}>{capture.kind === "image" ? <Camera size={20} /> : capture.kind === "pdf" ? <FileText size={20} /> : capture.kind === "youtube" ? <Play size={20} /> : <Link2 size={20} />}</span>
-            <div className="capture-copy"><div className="capture-meta"><span>{capture.kind === "image" ? "Image capture" : capture.kind === "pdf" ? "PDF document" : capture.kind === "youtube" ? "YouTube video" : "Saved link"}</span><span>·</span><span>{relativeTime(capture.captured_at)}</span></div><h3>{analysis?.title ?? capture.original_url ?? "Processing your capture…"}</h3><p>{analysis?.summary ?? capture.note ?? "We’re extracting the useful ideas and organizing them for you."}</p></div>
+            <span className={`source-icon ${capture.kind}`}>{capture.kind === "image" ? <Camera size={20} /> : capture.kind === "pdf" ? <FileText size={20} /> : capture.kind === "youtube" ? <Play size={20} /> : capture.kind === "text" ? <AlignLeft size={20} /> : <Link2 size={20} />}</span>
+            <div className="capture-copy"><div className="capture-meta"><span>{capture.kind === "image" ? "Image capture" : capture.kind === "pdf" ? "PDF document" : capture.kind === "youtube" ? "YouTube video" : capture.kind === "text" ? "Pasted text" : "Saved link"}</span><span>·</span><span>{relativeTime(capture.captured_at)}</span></div><h3>{analysis?.title ?? capture.original_url ?? "Processing your capture…"}</h3><p>{analysis?.summary ?? capture.note ?? "We’re extracting the useful ideas and organizing them for you."}</p></div>
             <span className={`status ${capture.status}`}>{capture.status === "needs_attention" ? <><CircleAlert size={14} /> Needs attention</> : capture.status}</span>
           </Link>;
-        }) : <div className="empty-state"><Camera size={28} /><h3>Your library is ready</h3><p>Upload screenshots, book photos, or PDFs from any browser; paste links; or save a tab with the extension.</p><Link className="inline-add" href="/capture">Add your first capture</Link></div>}
+        }) : <div className="empty-state"><Camera size={28} /><h3>Your library is ready</h3><p>Upload screenshots, book photos, or PDFs from any browser; paste links or text; or save a tab with the extension.</p><Link className="inline-add" href="/capture">Add your first capture</Link></div>}
       </div>
     </main>
   </div>;

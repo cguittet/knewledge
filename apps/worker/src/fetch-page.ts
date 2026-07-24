@@ -12,6 +12,15 @@ export class FetchPageError extends Error {
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const USER_AGENT = "KnewledgeBot/0.1 (+https://knewledge.example/about)";
 
+export function blockedPageMessage(response: Pick<Response, "status" | "headers">) {
+  if (response.headers.get("cf-mitigated") === "challenge") {
+    return "The site presented a Cloudflare browser challenge and blocked automated retrieval. Copy the page text or attach screenshots instead.";
+  }
+  return response.status === 429
+    ? "The site rate-limited automated retrieval. Try again later, or copy the page text instead."
+    : "The site blocked automated retrieval. Copy the page text or attach screenshots instead.";
+}
+
 async function respectsRobots(url: URL, signal: AbortSignal) {
   const robotsUrl = new URL("/robots.txt", url.origin);
   try {
@@ -64,7 +73,7 @@ export async function fetchReadablePage(rawUrl: string) {
     if (!response) throw new FetchPageError("transient", "No response received");
     if (response.status === 401) throw new FetchPageError("authentication_required", "This page requires authentication");
     if (response.status === 402) throw new FetchPageError("paywall", "This page is behind a paywall");
-    if (response.status === 403 || response.status === 429) throw new FetchPageError("bot_protection", "The site blocked automated retrieval");
+    if (response.status === 403 || response.status === 429) throw new FetchPageError("bot_protection", blockedPageMessage(response));
     if (!response.ok) throw new FetchPageError(response.status >= 500 ? "transient" : "unsupported_content", `Page returned HTTP ${response.status}`);
     const contentType = response.headers.get("content-type") ?? "";
     if (!/text\/html|application\/xhtml\+xml/i.test(contentType)) throw new FetchPageError("unsupported_content", `Unsupported content type: ${contentType || "unknown"}`);
