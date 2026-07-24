@@ -1,10 +1,13 @@
 "use client";
 
-import { Chrome, Copy, Mail, Save } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
+import { Chrome, Copy, LogOut, Mail, Save, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Shell } from "@/components/shell";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
   const [weekday, setWeekday] = useState(0);
   const [localTime, setLocalTime] = useState("18:00");
@@ -22,8 +25,14 @@ export default function SettingsPage() {
     const body = await response.json() as { code?: string };
     setPairCode(body.code ?? null);
   }
+  async function signOut() {
+    const client = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    await client.auth.signOut();
+    router.replace("/login");
+    router.refresh();
+  }
 
   return <Shell eyebrow="Personalize your rhythm" title="Settings"><div className="settings-grid"><section className="settings-card"><div className="settings-title"><span><Mail size={20} /></span><div><h2>Weekly digest</h2><p>Choose when your synthesis arrives.</p></div></div><label>Timezone<input value={timezone} onChange={(event) => setTimezone(event.target.value)} /></label><div className="form-grid"><label>Weekday<select value={weekday} onChange={(event) => setWeekday(Number(event.target.value))}><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></label><label>Local time<input type="time" value={localTime} onChange={(event) => setLocalTime(event.target.value)} /></label></div><label className="toggle"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} /><span /> Send weekly digests</label><button className="settings-button" onClick={save}><Save size={17} /> Save schedule</button>{message && <small>{message}</small>}</section>
-  <section className="settings-card"><div className="settings-title"><span><Chrome size={20} /></span><div><h2>Browser extension</h2><p>Pair a Chromium browser for quick captures.</p></div></div><p className="settings-help">Generate a one-time code, open the extension, and enter it within ten minutes.</p>{pairCode ? <button className="pair-code" onClick={() => navigator.clipboard.writeText(pairCode)}><b>{pairCode}</b><Copy size={17} /></button> : <button className="settings-button secondary" onClick={pair}><Chrome size={17} /> Generate pairing code</button>}</section></div></Shell>;
+  <section className="settings-card"><div className="settings-title"><span><Chrome size={20} /></span><div><h2>Browser extension</h2><p>Pair a Chromium browser for quick captures.</p></div></div><p className="settings-help">Generate a one-time code, open the extension, and enter it within ten minutes.</p>{pairCode ? <button className="pair-code" onClick={() => navigator.clipboard.writeText(pairCode)}><b>{pairCode}</b><Copy size={17} /></button> : <button className="settings-button secondary" onClick={pair}><Chrome size={17} /> Generate pairing code</button>}</section>
+  <section className="settings-card"><div className="settings-title"><span><ShieldCheck size={20} /></span><div><h2>Account</h2><p>Your library is protected by Supabase Auth and database row-level security.</p></div></div><p className="settings-help">You can sign back in with Google, a password, or a secure email link.</p><button className="settings-button secondary" onClick={signOut}><LogOut size={17} /> Sign out</button></section></div></Shell>;
 }
-

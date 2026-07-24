@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalYoutubeUrl, chunkText, digestWindow, firstRelation, isPrivateIp, keepStrongRelations, normalizeUrl, youtubeVideoId } from "./index.js";
+import { canonicalYoutubeUrl, chunkText, digestWindow, firstRelation, isPrivateIp, keepStrongRelations, normalizeUrl, parsePastedUrls, youtubeVideoId } from "./index.js";
 
 describe("Supabase relations", () => {
   it("normalizes one-to-one object and array response shapes", () => {
@@ -31,6 +31,35 @@ describe("YouTube URLs", () => {
   ])("extracts a video id from %s", (url) => expect(youtubeVideoId(url)).toBe("dQw4w9WgXcQ"));
   it("rejects non-video and malformed URLs", () => expect(youtubeVideoId("https://youtube.com/feed/subscriptions")).toBeNull());
   it("creates one stable canonical URL", () => expect(canonicalYoutubeUrl("https://youtu.be/dQw4w9WgXcQ?t=4")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ"));
+});
+
+describe("pasted URLs", () => {
+  it("extracts comma- and space-separated links as separate items", () => {
+    expect(parsePastedUrls("https://example.com/one, https://example.com/two https://youtu.be/dQw4w9WgXcQ")).toEqual([
+      "https://example.com/one",
+      "https://example.com/two",
+      "https://youtu.be/dQw4w9WgXcQ",
+    ]);
+  });
+
+  it("extracts links from Chrome-style numbered text", () => {
+    expect(parsePastedUrls("1. https://example.com/one 2. https://example.com/two. 3. https://example.com/three")).toEqual([
+      "https://example.com/one",
+      "https://example.com/two",
+      "https://example.com/three",
+    ]);
+  });
+
+  it("keeps duplicates as distinct save occurrences", () => {
+    expect(parsePastedUrls("https://example.com https://example.com")).toEqual([
+      "https://example.com",
+      "https://example.com",
+    ]);
+  });
+
+  it("caps bulk imports at the requested limit", () => {
+    expect(parsePastedUrls("https://example.com/one https://example.com/two", 1)).toEqual(["https://example.com/one"]);
+  });
 });
 
 describe("chunking", () => {

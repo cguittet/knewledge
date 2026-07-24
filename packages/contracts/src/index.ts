@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CaptureKind = z.enum(["image", "link", "youtube"]);
+export const CaptureKind = z.enum(["image", "pdf", "link", "youtube"]);
 export const CaptureStatus = z.enum([
   "queued",
   "processing",
@@ -48,20 +48,44 @@ export const ItemAnalysis = z.object({
   confidence: z.number().min(0).max(1),
 });
 
-export const CreateUploadRequest = z.object({
-  files: z.array(z.object({
+const ImageMimeType = z.enum(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
+const ImageUpload = z.object({
     fileName: z.string().min(1).max(255),
-    mimeType: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]),
+    mimeType: ImageMimeType,
     sizeBytes: z.number().int().positive().max(15 * 1024 * 1024),
-  })).min(1).max(10),
+});
+const PdfUpload = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.literal("application/pdf"),
+  sizeBytes: z.number().int().positive().max(25 * 1024 * 1024),
+});
+
+export const CreateUploadRequest = z.object({
+  files: z.array(z.union([ImageUpload, PdfUpload])).min(1).max(20),
+}).superRefine(({ files }, context) => {
+  if (files.some((file) => file.mimeType === "application/pdf") && files.length !== 1) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Upload one PDF at a time", path: ["files"] });
+  }
 });
 
 export const CreateImageCaptureRequest = z.object({
   assets: z.array(z.object({
     objectKey: z.string().min(1).max(1024),
-    mimeType: z.string().min(1).max(100),
+    fileName: z.string().min(1).max(255),
+    mimeType: ImageMimeType,
     sizeBytes: z.number().int().positive().max(15 * 1024 * 1024),
-  })).min(1).max(10),
+  })).min(1).max(20),
+  note: z.string().trim().max(2000).nullable().optional(),
+  capturedAt: z.string().datetime().optional(),
+});
+
+export const CreatePdfCaptureRequest = z.object({
+  asset: z.object({
+    objectKey: z.string().min(1).max(1024),
+    fileName: z.string().min(1).max(255),
+    mimeType: z.literal("application/pdf"),
+    sizeBytes: z.number().int().positive().max(25 * 1024 * 1024),
+  }),
   note: z.string().trim().max(2000).nullable().optional(),
   capturedAt: z.string().datetime().optional(),
 });
