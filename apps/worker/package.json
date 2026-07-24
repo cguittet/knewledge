@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "trigger dev",
-    "deploy": "trigger deploy",
+    "dev": "trigger dev ../..",
+    "deploy": "trigger deploy ../.. --env prod --native-build-server",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",

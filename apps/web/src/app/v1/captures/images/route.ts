@@ -17,7 +17,7 @@ export const POST = apiHandler(async (request: NextRequest) => {
 
   const { error: assetError } = await db.from("assets").insert(body.assets.map((asset, ordinal) => ({
     user_id: userId, capture_id: capture.id, object_key: asset.objectKey,
-    ordinal, mime_type: asset.mimeType, size_bytes: asset.sizeBytes,
+    ordinal, original_name: asset.fileName, mime_type: asset.mimeType, size_bytes: asset.sizeBytes,
   })));
   if (assetError) {
     await db.from("captures").delete().eq("id", capture.id).eq("user_id", userId);

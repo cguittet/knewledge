@@ -14,8 +14,7 @@ export const POST = apiHandler(async (request: NextRequest) => {
     const objectKey = `${userId}/${randomUUID()}-${safeName(file.fileName)}`;
     const { data, error } = await db.storage.from("captures").createSignedUploadUrl(objectKey);
     if (error) throw error;
-    return { objectKey, token: data.token, signedUrl: data.signedUrl, mimeType: file.mimeType, sizeBytes: file.sizeBytes };
+    return { objectKey, token: data.token, signedUrl: data.signedUrl, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes };
   }));
   return NextResponse.json({ uploads }, { status: 201 });
 });
-

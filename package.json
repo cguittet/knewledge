@@ -6,6 +6,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev --parallel",
+    "worker:dev": "trigger dev",
+    "worker:deploy": "trigger deploy --env prod --native-build-server",
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
@@ -13,9 +15,12 @@
     "check": "pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
+    "@trigger.dev/build": "4.5.6",
+    "@trigger.dev/sdk": "4.5.6",
     "@types/node": "^24.0.0",
     "prettier": "^3.5.3",
     "turbo": "^2.5.4",
+    "trigger.dev": "4.5.6",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }

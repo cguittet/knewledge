@@ -5,8 +5,9 @@ export default defineConfig({
   runtime: "node-22",
   logLevel: "log",
   maxDuration: 600,
-  dirs: ["./src/tasks"],
+  dirs: ["./apps/worker/src/tasks"],
   build: {
+    conditions: ["@knewledge/source"],
     external: ["jsdom", "sharp"],
   },
 });
