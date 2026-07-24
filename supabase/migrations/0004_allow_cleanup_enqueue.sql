@@ -14,16 +14,24 @@ begin
     raise exception 'Authentication required' using errcode = '42501';
   end if;
 
-  select coalesce(array_agg(storage_key), '{}')
+  select coalesce(array_agg(asset_key), '{}')
   into keys
-  from public.assets
-  where capture_id = target_capture_id
-    and user_id = caller_id;
+  from (
+    select object_key as asset_key
+    from public.assets
+    where capture_id = target_capture_id
+      and user_id = caller_id
+    union all
+    select normalized_object_key as asset_key
+    from public.assets
+    where capture_id = target_capture_id
+      and user_id = caller_id
+      and normalized_object_key is not null
+  ) all_asset_keys;
 
   update public.captures
   set deleted_at = now(),
-      processing_status = 'deleted',
-      updated_at = now()
+      status = 'deleting'
   where id = target_capture_id
     and user_id = caller_id
     and deleted_at is null;
