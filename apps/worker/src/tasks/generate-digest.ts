@@ -6,6 +6,7 @@ import { db } from "../clients.js";
 import { env } from "../env.js";
 import { synthesizeDigest } from "../model.js";
 import { sendDigestEmail } from "../email.js";
+import { jobUsageColumns, type ModelUsage } from "../usage.js";
 
 const Payload = z.object({ userId: z.string().uuid(), now: z.string().datetime() });
 
@@ -15,6 +16,7 @@ export const generateDigest = task({
   retry: { maxAttempts: 3, minTimeoutInMs: 5_000, maxTimeoutInMs: 60_000, factor: 2 },
   run: async (raw) => {
     const { userId, now } = Payload.parse(raw);
+    const usageCalls: ModelUsage[] = [];
     const [{ data: settings }, { data: profile }] = await Promise.all([
       db.from("digest_settings").select("*").eq("user_id", userId).single(),
       db.from("user_profiles").select("email,preferred_language").eq("user_id", userId).single(),
@@ -40,7 +42,8 @@ export const generateDigest = task({
       candidates[capture.id] = (data ?? []) as Array<{ capture_id: string; evidence: string; title: string; summary: string; similarity: number }>;
     }
     const source = JSON.stringify({ instructions: { language: config.preferredLanguage, periodStart: window.periodStart.toISOString(), periodEnd: window.periodEnd.toISOString() }, currentCaptures: ready.map((capture) => ({ id: capture.id, savedAt: capture.captured_at, kind: capture.kind, note: capture.note, analysis: firstRelation(capture.content_revisions[0]!.item_analyses)! })), priorCandidatesByCurrentCapture: candidates });
-    const synthesis = await synthesizeDigest(`<UNTRUSTED_CAPTURE_DATA>${source}</UNTRUSTED_CAPTURE_DATA>`);
+    const synthesis = await synthesizeDigest(`<UNTRUSTED_CAPTURE_DATA>${source}</UNTRUSTED_CAPTURE_DATA>`, (usage) => usageCalls.push(usage));
+    await db.from("job_runs").update(jobUsageColumns(usageCalls)).eq("idempotency_key", jobKey);
     const normalized = (value: string) => value.toLowerCase().replace(/\s+/g, " ").replace(/[^\p{L}\p{N} ]/gu, "").trim();
     synthesis.relations = keepStrongRelations(synthesis.relations.filter((relation) => {
       const current = ready.find((capture) => capture.id === relation.currentCaptureId);

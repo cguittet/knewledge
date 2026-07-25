@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateLinkCapturesRequest, CreatePdfCaptureRequest, CreateTextCaptureRequest, CreateUploadRequest, DigestSettings } from "./index.js";
+import { CreateLinkCapturesRequest, CreatePdfCaptureRequest, CreateTextCaptureRequest, CreateUploadRequest, DigestSettings, ItemAnalysis, TextItemAnalysis } from "./index.js";
 
 describe("contracts", () => {
   it("caps bulk link imports at 50", () => {
@@ -28,6 +28,11 @@ describe("contracts", () => {
     expect(CreateTextCaptureRequest.safeParse({ text: "A useful idea worth remembering." }).success).toBe(true);
     expect(CreateTextCaptureRequest.safeParse({ text: "   " }).success).toBe(false);
     expect(CreateTextCaptureRequest.safeParse({ text: "a".repeat(250_001) }).success).toBe(false);
+  });
+
+  it("does not ask text analysis to repeat extracted source text", () => {
+    expect("extractedText" in TextItemAnalysis.shape).toBe(false);
+    expect("extractedText" in ItemAnalysis.shape).toBe(true);
   });
 
   it("validates digest local time", () => {

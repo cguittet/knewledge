@@ -7,6 +7,7 @@ import { fetchReadablePage, FetchPageError } from "../fetch-page.js";
 import { fetchYoutubeContent } from "../fetch-youtube.js";
 import { analyzeImages, analyzePdf, analyzeText } from "../model.js";
 import { persistAnalysis } from "../persist.js";
+import { jobUsageColumns, type ModelUsage } from "../usage.js";
 
 const Payload = z.object({ captureId: z.string().uuid(), userId: z.string().uuid() });
 
@@ -17,6 +18,8 @@ export const processCapture = task({
   run: async (raw) => {
     const { captureId, userId } = Payload.parse(raw);
     const jobKey = `capture:${captureId}`;
+    const usageCalls: ModelUsage[] = [];
+    const trackUsage = (usage: ModelUsage) => usageCalls.push(usage);
     await db.from("job_runs").upsert({ user_id: userId, capture_id: captureId, job_type: "process_capture", idempotency_key: jobKey, status: "running", started_at: new Date().toISOString() }, { onConflict: "idempotency_key" });
     await db.from("captures").update({ status: "processing", failure_category: null, failure_detail: null }).eq("id", captureId).eq("user_id", userId);
     try {
@@ -32,8 +35,8 @@ export const processCapture = task({
           throw new FetchPageError("unsupported_content", "The uploaded file is not a valid PDF under 25 MB");
         }
         const filename = asset.original_name || "document.pdf";
-        const analysis = await analyzePdf(source, filename);
-        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "openai_pdf", sourceMetadata: { filename, sizeBytes: source.byteLength } });
+        const analysis = await analyzePdf(source, filename, trackUsage);
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "openai_pdf", sourceMetadata: { filename, sizeBytes: source.byteLength }, onUsage: trackUsage });
       } else if (capture.kind === "image" || capture.assets.length) {
         const images: Array<{ dataUrl: string; mimeType: string }> = [];
         for (const asset of [...capture.assets].sort((a, b) => a.ordinal - b.ordinal)) {
@@ -47,33 +50,33 @@ export const processCapture = task({
           await db.from("assets").update({ normalized_object_key: normalizedKey }).eq("id", asset.id).eq("user_id", userId);
           images.push({ mimeType: "image/jpeg", dataUrl: `data:image/jpeg;base64,${normalized.toString("base64")}` });
         }
-        const analysis = await analyzeImages(images);
-        await persistAnalysis({ userId, captureId, analysis, extractionMethod: capture.kind === "link" ? "attached_images" : "vision" });
+        const analysis = await analyzeImages(images, trackUsage);
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: capture.kind === "link" ? "attached_images" : "vision", onUsage: trackUsage });
       } else if (capture.kind === "youtube") {
         const video = await fetchYoutubeContent(capture.original_url, { supadataApiKey: env.SUPADATA_API_KEY });
-        const analysis = await analyzeText(video.text, video);
-        analysis.extractedText = video.text;
+        const textAnalysis = await analyzeText(video.text, video, trackUsage);
+        const analysis = { ...textAnalysis, extractedText: video.text };
         analysis.source.title = video.title;
         analysis.source.author = video.author;
         analysis.source.publication = "YouTube";
-        await persistAnalysis({ userId, captureId, analysis, extractionMethod: video.extractionMethod, fetchedAt: new Date().toISOString(), sourceMetadata: { videoId: video.videoId, resolvedUrl: video.url, thumbnailUrl: video.thumbnailUrl, authorUrl: video.authorUrl, segmentCount: video.segmentCount, transcriptLanguage: video.language } });
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: video.extractionMethod, fetchedAt: new Date().toISOString(), sourceMetadata: { videoId: video.videoId, resolvedUrl: video.url, thumbnailUrl: video.thumbnailUrl, authorUrl: video.authorUrl, segmentCount: video.segmentCount, transcriptLanguage: video.language }, onUsage: trackUsage });
       } else if (capture.kind === "text") {
         const pastedText = capture.pasted_text?.trim();
         if (!pastedText) throw new FetchPageError("empty_content", "The pasted text is empty");
-        const analysis = await analyzeText(pastedText, {});
-        analysis.extractedText = pastedText;
-        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "pasted_text", sourceMetadata: { characterCount: pastedText.length } });
+        const textAnalysis = await analyzeText(pastedText, {}, trackUsage);
+        const analysis = { ...textAnalysis, extractedText: pastedText };
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "pasted_text", sourceMetadata: { characterCount: pastedText.length }, onUsage: trackUsage });
       } else {
         const page = await fetchReadablePage(capture.original_url);
-        const analysis = await analyzeText(page.text, page);
-        analysis.extractedText = page.text;
+        const textAnalysis = await analyzeText(page.text, page, trackUsage);
+        const analysis = { ...textAnalysis, extractedText: page.text };
         if (!analysis.source.title) analysis.source.title = page.title;
         if (!analysis.source.author) analysis.source.author = page.author;
         if (!analysis.source.publication) analysis.source.publication = page.publication;
-        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "readability", fetchedAt: new Date().toISOString(), sourceMetadata: { resolvedUrl: page.url, excerpt: page.excerpt } });
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "readability", fetchedAt: new Date().toISOString(), sourceMetadata: { resolvedUrl: page.url, excerpt: page.excerpt }, onUsage: trackUsage });
       }
       await db.from("captures").update({ status: "ready" }).eq("id", captureId).eq("user_id", userId);
-      await db.from("job_runs").update({ status: "succeeded", finished_at: new Date().toISOString() }).eq("idempotency_key", jobKey);
+      await db.from("job_runs").update({ status: "succeeded", finished_at: new Date().toISOString(), ...jobUsageColumns(usageCalls) }).eq("idempotency_key", jobKey);
       return { captureId, status: "ready" };
     } catch (error) {
       const known = error instanceof FetchPageError;
@@ -81,7 +84,7 @@ export const processCapture = task({
       const detail = error instanceof Error ? error.message : "Processing failed";
       logger.error("Capture processing failed", { captureId, category, detail });
       await db.from("captures").update({ status: known ? "needs_attention" : "failed", failure_category: category, failure_detail: detail }).eq("id", captureId).eq("user_id", userId);
-      await db.from("job_runs").update({ status: "failed", error_category: category, error_detail: detail, finished_at: new Date().toISOString() }).eq("idempotency_key", jobKey);
+      await db.from("job_runs").update({ status: "failed", error_category: category, error_detail: detail, finished_at: new Date().toISOString(), ...jobUsageColumns(usageCalls) }).eq("idempotency_key", jobKey);
       if (!known) throw error;
       return { captureId, status: "needs_attention", category };
     }
