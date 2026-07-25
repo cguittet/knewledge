@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CreateLinkCapturesRequest, CreatePdfCaptureRequest, CreateUploadRequest, DigestSettings } from "./index.js";
+import { CreateLinkCapturesRequest, CreatePdfCaptureRequest, CreateTextCaptureRequest, CreateUploadRequest, DigestSettings } from "./index.js";
 
 describe("contracts", () => {
   it("caps bulk link imports at 50", () => {
@@ -22,6 +22,12 @@ describe("contracts", () => {
     expect(CreateUploadRequest.safeParse({ files: [pdf] }).success).toBe(true);
     expect(CreatePdfCaptureRequest.safeParse({ asset: { objectKey: "user/report.pdf", ...pdf } }).success).toBe(true);
     expect(CreateUploadRequest.safeParse({ files: [pdf, { fileName: "page.png", mimeType: "image/png", sizeBytes: 20 }] }).success).toBe(false);
+  });
+
+  it("accepts meaningful pasted text and caps it at 250,000 characters", () => {
+    expect(CreateTextCaptureRequest.safeParse({ text: "A useful idea worth remembering." }).success).toBe(true);
+    expect(CreateTextCaptureRequest.safeParse({ text: "   " }).success).toBe(false);
+    expect(CreateTextCaptureRequest.safeParse({ text: "a".repeat(250_001) }).success).toBe(false);
   });
 
   it("validates digest local time", () => {

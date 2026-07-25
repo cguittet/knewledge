@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const CaptureKind = z.enum(["image", "pdf", "link", "youtube"]);
+export const CaptureKind = z.enum(["image", "pdf", "link", "youtube", "text"]);
 export const CaptureStatus = z.enum([
   "queued",
   "processing",
@@ -95,6 +95,12 @@ export const CreateLinkCapturesRequest = z.object({
     url: z.string().url().max(4096),
     note: z.string().trim().max(2000).nullable().optional(),
   })).min(1).max(50),
+  capturedAt: z.string().datetime().optional(),
+});
+
+export const CreateTextCaptureRequest = z.object({
+  text: z.string().trim().min(1).max(250_000),
+  note: z.string().trim().max(2000).nullable().optional(),
   capturedAt: z.string().datetime().optional(),
 });
 

@@ -57,6 +57,12 @@ export const processCapture = task({
         analysis.source.author = video.author;
         analysis.source.publication = "YouTube";
         await persistAnalysis({ userId, captureId, analysis, extractionMethod: video.extractionMethod, fetchedAt: new Date().toISOString(), sourceMetadata: { videoId: video.videoId, resolvedUrl: video.url, thumbnailUrl: video.thumbnailUrl, authorUrl: video.authorUrl, segmentCount: video.segmentCount, transcriptLanguage: video.language } });
+      } else if (capture.kind === "text") {
+        const pastedText = capture.pasted_text?.trim();
+        if (!pastedText) throw new FetchPageError("empty_content", "The pasted text is empty");
+        const analysis = await analyzeText(pastedText, {});
+        analysis.extractedText = pastedText;
+        await persistAnalysis({ userId, captureId, analysis, extractionMethod: "pasted_text", sourceMetadata: { characterCount: pastedText.length } });
       } else {
         const page = await fetchReadablePage(capture.original_url);
         const analysis = await analyzeText(page.text, page);

@@ -1,6 +1,6 @@
 # Knewledge
 
-Knewledge turns screenshots, book photos, PDFs, web pages, and YouTube videos into a searchable private library and a weekly synthesis that connects new ideas to earlier captures.
+Knewledge turns screenshots, book photos, PDFs, pasted text, web pages, and YouTube videos into a searchable private library and a weekly synthesis that connects new ideas to earlier captures.
 
 ## Repository layout
 
@@ -31,7 +31,7 @@ The web UI continues to use Supabase Auth so its user IDs remain compatible with
 
 ## Processing behavior
 
-Captures are accepted quickly and processed asynchronously. Image and PDF originals stay private in Supabase Storage. PDFs up to 25 MB are analyzed as both extracted text and page imagery, so scanned pages, tables, charts, and diagrams remain useful. URL workers fetch only public HTTP(S) pages, validate every redirect against SSRF, cap payloads, and never attempt to bypass access controls. YouTube processing first tries public caption tracks directly. When `SUPADATA_API_KEY` is configured in the Trigger.dev worker environment, it falls back to Supadata `auto` mode, which retrieves another available caption track or generates a transcript when necessary. Knewledge itself never downloads YouTube video or audio. Captured content is always treated as untrusted data in model prompts.
+Captures are accepted quickly and processed asynchronously. Image and PDF originals stay private in Supabase Storage. PDFs up to 25 MB are analyzed as both extracted text and page imagery, so scanned pages, tables, charts, and diagrams remain useful. Pasted text supports up to 250,000 characters. URL workers fetch only public HTTP(S) pages, validate every redirect against SSRF, cap payloads, and never attempt to bypass access controls. If a public page challenges or blocks automated retrieval, copy its useful text in the browser and save it from the Text tab instead. YouTube processing first tries public caption tracks directly. When `SUPADATA_API_KEY` is configured in the Trigger.dev worker environment, it falls back to Supadata `auto` mode, which retrieves another available caption track or generates a transcript when necessary. Knewledge itself never downloads YouTube video or audio. Captured content is always treated as untrusted data in model prompts.
 
 Create a Supadata key at `https://dash.supadata.ai`, add it as `SUPADATA_API_KEY` in the Trigger.dev production environment, and redeploy the worker from the repository root with `pnpm worker:deploy`. The root-level Trigger configuration ensures the native builder can bundle the shared pnpm workspace packages. Without this optional key, YouTube processing still uses the free direct-caption path but cloud-side YouTube blocking can produce false negatives.
 
