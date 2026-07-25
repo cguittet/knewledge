@@ -36,9 +36,8 @@ export const SourceClue = z.object({
   publishedAt: z.string().datetime().nullable(),
 });
 
-export const ItemAnalysis = z.object({
+const AnalysisFields = z.object({
   language: z.string().min(2).max(20),
-  extractedText: z.string().min(1),
   title: z.string().min(1).max(500),
   summary: z.string().min(1).max(4000),
   keyIdeas: z.array(z.string().min(1).max(800)).min(1).max(12),
@@ -46,6 +45,13 @@ export const ItemAnalysis = z.object({
   topics: z.array(z.string().min(1).max(80)).min(1).max(10),
   source: SourceClue,
   confidence: z.number().min(0).max(1),
+});
+
+// Text sources are already extracted before analysis, so asking the model to
+// echo them back wastes output tokens. Images and PDFs still need OCR output.
+export const TextItemAnalysis = AnalysisFields;
+export const ItemAnalysis = AnalysisFields.extend({
+  extractedText: z.string().min(1),
 });
 
 const ImageMimeType = z.enum(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
@@ -141,6 +147,7 @@ export const DigestSynthesis = z.object({
 
 export type CaptureKind = z.infer<typeof CaptureKind>;
 export type CaptureStatus = z.infer<typeof CaptureStatus>;
+export type TextItemAnalysis = z.infer<typeof TextItemAnalysis>;
 export type ItemAnalysis = z.infer<typeof ItemAnalysis>;
 export type DigestSettings = z.infer<typeof DigestSettings>;
 export type DigestSynthesis = z.infer<typeof DigestSynthesis>;
